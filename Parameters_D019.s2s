@@ -1,0 +1,56 @@
+' D019 Specific parameters
+
+'--------------------------------------------------------------------------------
+' SEQUENCER FILE LOCATION
+'--------------------------------------------------------------------------------
+var SequencerFile$ := "C:\\Users\\amins\\Documents\\RL_Code\\Experiment Protocols\\Sequencer_D019";
+
+'--------------------------------------------------------------------------------
+' MISC PARAMETERS
+'--------------------------------------------------------------------------------
+var sinAmpChair := 20;
+var sinAmpDrum := 20;
+
+' OPTIONAL D019 CHANNELS???
+var htvelChan%; 'Channel for getting velocity from drum position
+var hhvelChan%; 'Channel for getting velocity from chair position
+
+'--------------------------------------------------------------------------------
+' MOTOR CALIBRATION PARAMETERS
+'--------------------------------------------------------------------------------
+
+'Chair converstion factors
+var ChairDegreesPerSecond2Voltage := 0.009323; 'Chair velocity to voltage (Scale)  * Doubled after fixing scaling (10 V MaxVoltage) 1/10/14 HP
+var ChairDegreesPerSecondOffset := -.2;         'Chair velocity to voltage (offset)  *** Input default Chair offset here
+
+'Drum conversion factors
+var DrumDegreesPerSecond2Voltage := 0.01;      'Drum velocity to voltage (Scale)
+var DrumDegreesPerSecondOffset := 0.1;        'Drum velocity to voltage (offset)   *** Input default Drum offset here
+
+'Channel 1: Scaling to display the drum COMMAND signal
+var DrumVoltage2Velocity := 100;                'Voltage to Drum Velocity (Scale)
+var DrumVoltage2VelocityC := 0;                 'Voltage to Drum Velocity (offset)
+
+'Channel 2: Scaling to display the chair COMMAND signal
+var ChairVoltage2Velocity := 1/ChairDegreesPerSecond2Voltage; '107.42869;         'Voltage to Chair Velocity (Scale)     HP 1/10/14
+var ChairVoltage2VelocityC := 0;                'Voltage to Chair Velocity (offset)
+
+'Chair velocity readout
+var ChairVelReadoutScale := 1;             '
+var ChairVelReadoutOffset := 0;
+
+'Chair position readout
+var ChairPosReadoutScale := -18.07;              'Voltage to Chair Position (Scale)
+var ChairPosReadoutOffset := 0;                 'Voltage to Chair Position (offset)
+
+'Drum velocity readout - NOT USED FOR D019
+var DrumVelReadoutScale := 1;
+var DrumVelReadoutOffset := 0;
+
+'Scaling for drum position readout
+var DrumPosReadoutScale := 20;                   'Drum position readout scale
+var DrumPosReadoutOffset := 0;                  'Drum position readout offset
+
+'Channel 5/6: Eye position readout
+var EyeVoltage2Position := 1;                   'Voltage to Eye Position (Scale)
+var EyeVoltage2PositionC := 0;                  'Voltage to Eye Position (offset)

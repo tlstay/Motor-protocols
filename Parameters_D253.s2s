@@ -1,0 +1,52 @@
+' D253 Specific parameters
+
+'--------------------------------------------------------------------------------
+' SEQUENCER FILE LOCATION
+'--------------------------------------------------------------------------------
+var SequencerFile$ := "C:\\Users\\amins\\Documents\\RL_Code\\Experiment Protocols\\Sequencer_D253";
+
+'--------------------------------------------------------------------------------
+' MISC PARAMETERS
+'--------------------------------------------------------------------------------
+var sinAmpChair := 10;
+var sinAmpDrum := 10;
+
+'--------------------------------------------------------------------------------
+' MOTOR CALIBRATION PARAMETERS
+'--------------------------------------------------------------------------------
+
+'Chair converstion factors
+var ChairDegreesPerSecond2Voltage := 0.0098255; 'Chair velocity to voltage (Scale)  * Doubled after fixing scaling (10 V MaxVoltage) 12/10/15 HP
+var ChairDegreesPerSecondOffset :=  .06;         'Chair velocity to voltage (offset)  *** Input default Chair offset here
+
+'Drum conversion factors
+var DrumDegreesPerSecond2Voltage := 0.005;      'Drum velocity to voltage (Scale)
+var DrumDegreesPerSecondOffset := .246;        'Drum velocity to voltage (offset)   *** Input default Drum offset here
+
+'Channel 1: Scaling to display the drum COMMAND signal
+var DrumVoltage2Velocity := -1/DrumDegreesPerSecond2Voltage;                'Voltage to Drum Velocity (Scale)
+var DrumVoltage2VelocityC := 0;                 'Voltage to Drum Velocity (offset)
+
+'Channel 2: Scaling to display the chair COMMAND signal
+var ChairVoltage2Velocity := -1/ChairDegreesPerSecond2Voltage; '107.42869;         'Voltage to Chair Velocity (Scale)     HP 1/10/14
+var ChairVoltage2VelocityC := 0;                'Voltage to Chair Velocity (offset)
+
+'Chair velocity readout
+var ChairVelReadoutScale := 100.331875;           '
+var ChairVelReadoutOffset := -.0689;
+
+'Chair position readout
+var ChairPosReadoutScale := -18.00215;              'Voltage to Chair Position (Scale)
+var ChairPosReadoutOffset := .08337982;                 'Voltage to Chair Position (offset)
+
+'Drum velocity readout
+var DrumVelReadoutScale := 9.33112;                ' NEW 9/7/2018'   '%*** 103.18 2/3/14 , 296.691885 3/3/16
+var DrumVelReadoutOffset := -0.0092635;              ' NEW 9/7/2018'
+
+'Scaling for drum position readout
+var DrumPosReadoutScale := 37.4055;               'Drum position readout scale (~100 deg/10V) 1/10/14
+var DrumPosReadoutOffset := .719269;                  'Drum position readout offset
+
+'Channel 5/6: Eye position readout
+var EyeVoltage2Position := 1;                   'Voltage to Eye Position (Scale)  %*** 20 HP 6/3
+var EyeVoltage2PositionC := 0;                  'Voltage to Eye Position (offset)

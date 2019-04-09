@@ -1,0 +1,727 @@
+' UNIVERSAL PARAMETERS
+
+'--------------------------------------------------------------------------------
+' SINE PARAMETERS
+'--------------------------------------------------------------------------------
+var sinHzChair := 1;
+var sinPhChair := -90;
+var actualChairPh;
+var sinHzDrum := 1;
+var sinPhDrum := 90;
+var actualDrumPh;
+var sineOn% := 0;
+
+'--------------------------------------------------------------------------------
+' STEP PARAMETERS
+'--------------------------------------------------------------------------------
+var stepPeriod := 2000;
+var stepLength := 500;
+var stepStim := 0;
+var stepAmpChair := 10;
+var stepAmpDrum := 10;
+var sRest2;
+var sStart;
+var sLength;
+var sLength1;
+var sRest1;
+var sAmpChair;
+var sAmpDrum;
+var sAmpChairN;
+var sAmpDrumN;
+var stepLen1 := 0;
+var stepLen2 := 0;
+var stepLen3 := 0;
+'For video alignment pulse - duration
+var pulseDurationV := 33;
+'For video alignment pulse - time between pulses
+var pulseWaitV := 1000 - pulseDurationV - 5;
+var pulsePeriod := 1000;
+var checkConfig := 1;
+
+
+'--------------------------------------------------------------------------------
+' PULSE PARAMETERS
+'--------------------------------------------------------------------------------
+var pWait := 0;
+var pNumber := 1;
+var pDuration;
+var pInterval;
+var pStart;
+var pulseDuration := 500;
+var pulseInterval := 0;
+var pWait2 := 0;
+var pulsePhase := 0 ;
+var stepLight := 0;
+var lightDur := 500;
+var lightStart := 0;
+
+
+'--------------------------------------------------------------------------------
+' EXPERIMENT PARAMETERS
+'--------------------------------------------------------------------------------
+var nBlocks% := 6;                 'Number of run-test blocks in exmpt
+var nTestreps% := 1;               'Number of times to repeat 40 sec test
+var runLength := 300;             'Seconds to run protocol in each block(300 for 5 min)
+var testLength := 45;             'Seconds to test
+var expmtLoc% := 1;
+var prePostNum := 1;
+var trainLoc% := 1;
+var trainAmount := 0;
+var expmtMode := 2;               'expmtMode: 0=off, 1=0x, 2=2x, 3=ipsi stim, 4=contra stim
+var testString$;
+var runExpmt% := 0;               ' Random note: % denotes integer types
+var rep% := 0;                    'Rep (5min run, 40 sec test)
+var test% := 1;                   'test: 0=run testLength, 1=test testLength, 2=init&wait 20 sec, 3=init&wait 10 sec,  4=init&wait runLength
+var testrep% := 0;
+var goalTime := 1000000000;    'maximum time the motor is allowed to run for
+var flashon% := 1;
+var waitLength := 300;
+var testStim := 0;
+var prevTime := 0;
+
+
+
+'--------------------------------------------------------------------------------
+' MISC PARAMETERS
+'--------------------------------------------------------------------------------
+var SampleWindow%;
+var comment$;
+var vidOn := 0;
+var stepOn% := 0;
+var fullPulse := 0;
+'Voltage Range: check in Edit -> Edit Parameters
+var MaxVoltage := 10;
+var driftFix := 1;
+var sinOnCorChair := 0;
+var sinOnCorDrum := 0;
+var zeroPause := 1;
+
+'--------------------------------------------------------------------------------
+' TOOLBAR PARAMETERS
+'--------------------------------------------------------------------------------
+const NewFilePos        := 2;
+const InitPos           := NewFilePos+1;
+const CommentPos        := InitPos+1;
+const LightPos          := CommentPos+1;
+const LaserPos          := LightPos+1;
+const SinePos           := LaserPos+1;
+const SineConfigPos     := SinePos+1;
+const PulsePos          := SineConfigPos+1;
+const PulseConfigPos    := PulsePos+1;
+const VidPos            := PulseConfigPos+1;
+const StepPos           := VidPos+1;
+const StepConfigPos     := StepPos+1;
+const ExpmtPos          := StepConfigPos+1;
+const ExpmtConfigPos    := ExpmtPos+1;
+
+const HTVELChCom% := 1;
+const HHVELChCom% := 2;
+const htposCh% := 3;
+const hhposCh% := 4;
+const heposCh1% := 5;
+const heposCh2% := 6;
+const hhvelCh% := 8;
+const htvelCh% := 13;
+
+'--------------------------------------------------------------------------------
+' SINE FUNCTIONS
+'--------------------------------------------------------------------------------
+Func ToolbarSineStart%()
+  SampleKey( "S" );
+  sineOn% := 1;
+  prevTime := MaxTime();
+  Yield();
+  ToolbarSet(SinePos, "Sine Off",ToolbarSineStop%);
+  Return( 1 );
+End
+
+Func ToolbarSineStop%()
+  SampleKey( "s" );
+  sineOn% := 0;
+  ToolbarSet(SinePos, "Sine On",ToolbarSineStart%);
+  Return( 1 );
+End
+
+Func ToolbarSineConfig%()
+  DlgCreate("Sine settings");  'Start new dialog
+  DlgReal(1,"Chair Freq (Hz)",0,50);
+  DlgReal(2,"Chair Peak Velocity (deg/sec)",0,100);    'set to 0 if not using Chair
+  DlgReal(3,"Chair Phase (degree)",-180,180);
+  DlgReal(4,"Drum Freq (Hz)",0,50);
+  DlgReal(5,"Drum Peak Velocity (deg/sec)",0,100);   'set to 0 if not using Drum
+  DlgReal(6,"Drum Phase (degree)",-180,180);
+  DlgShow(sinHzChair,sinAmpChair, sinPhChair, sinHzDrum, sinAmpDrum,  sinPhDrum);
+
+  SetPulseSettings%();
+
+  SetSequencerValues();
+  Return(1);
+End
+
+'--------------------------------------------------------------------------------
+' LIGHT FUNCTIONS
+'--------------------------------------------------------------------------------
+Func ToolbarLightOn%()
+  SampleKey( "L" );
+  Toolbarset(LightPos,"Light Off", ToolbarLightOff%);
+  Return( 1 );
+End
+
+Func ToolbarLightOff%()
+  SampleKey( "l" );
+  Toolbarset(LightPos,"Light On", ToolbarLightOn%);
+  Return( 1 );
+End
+
+Proc runFlash()
+  if flashon% = 1 then
+      ToolbarLightOn%();
+  endif;
+  Yield(.2);
+  ToolbarLightOff%();
+End
+
+'--------------------------------------------------------------------------------
+'Turn both lasers on/off
+'--------------------------------------------------------------------------------
+Func ToolbarLasersOn%()
+  SampleKey( "Z" );
+  Toolbarset(LaserPos,"Lasers Off", ToolbarLasersOff%);
+  Return( 1 );
+End
+
+Func ToolbarLasersOff%()
+  SampleKey( "z" );
+  Toolbarset(LaserPos,"Lasers On", ToolbarLasersOn%);
+  Return( 1 );
+End
+
+'--------------------------------------------------------------------------------
+'Start sine wave/pulses for video
+'--------------------------------------------------------------------------------
+Func ToolbarVidOn%()
+  vidOn := 1;
+  Yield();
+  pulseDurationV := 33; 'For video alignment pulse
+  pulseWaitV := 1000*1/sinHzChair - pulseDurationV - 5;    'For video alignment
+  SetSequencerValues();
+  SampleKey( "V" );
+  Toolbarset(VidPos,"Video Off", ToolbarVidOff%);
+  Return( 1 );
+End
+
+Func ToolbarVidOff%()
+  vidOn := 0;
+  Yield();
+  SampleKey( "v" );
+  Toolbarset(VidPos,"Video On", ToolbarVidOn%);
+  Return( 1 );
+End
+
+'--------------------------------------------------------------------------------
+' PULSE FUNCTIONS
+'--------------------------------------------------------------------------------
+Func ToolbarPulseConfig%()
+  DlgCreate("Pulse settings");  'Start new dialog
+  'DlgReal(1,"Period (ms)",0,300000);
+  DlgReal(1,"Number of Pulses",0,1000);
+  DlgReal(2,"Pulse duration (ms)",0,5000);
+  DlgReal(3,"Interpulse interval (ms)",0,5000);
+  DlgReal(4,"Pulse phase (deg)",0,360);
+  DlgShow(pNumber, pulseDuration, pulseInterval,pulsePhase);
+  SetPulseSettings%();
+  Return( 1 );
+End
+
+Func SetPulseSettings%()
+  pulsePeriod := 1/sinHzChair * 1000;
+  fullPulse := 0;
+  pWait := (pulsePeriod/2) - 4 - (pNumber *(pulseDuration + pulseInterval+1));
+
+  if pWait < 0 then
+      pWait := 0 ;
+      fullPulse := 1; 'Immediate switching between states
+  endif;
+  pDuration := pulseDuration -2;
+  pWait2 := pWait-2;
+  pInterval := pulseInterval;
+
+
+  if pInterval > 1 then
+      pInterval := pulseInterval -3;
+  endif;
+
+
+  SetSequencerValues();
+
+  Return(1);
+End
+
+'--------------------------------------------------------------------------------
+' STEP FUNCTIONS
+'--------------------------------------------------------------------------------
+Func ToolbarStepOn%()
+  if (stepStim = 0) and (stepLight = 0) then
+  	SampleKey ( "T" );
+  	ToolbarSet(StepPos, "Step Stop", ToolbarStepOff%);
+  else
+      if stepLight = 1 and stepStim = 0 then
+      docase
+          case lightDur = stepLength and lightStart = 0 then
+              SampleKey ("t");   ' Entire step
+
+          case stepLen1 = 0 then
+              ' Aligned to beginning of step
+              SampleKey("b");
+
+          case stepLen3 = 0 then
+              'Aligned to end of step
+              SampleKey("e");
+
+          else
+              ' Somewhere in the middle of step
+              SampleKey ("d");   ' Delayed/partial
+
+          endcase;
+          ToolbarSet(StepPos, "Step Stop", ToolbarStepOff%);
+      endif;
+      if stepStim = 1 and stepLight = 1 then
+          SampleKey ( "u");      '***Currently non functional 8/2/12?
+          ToolbarSet(StepPos, "Step Stop", ToolbarStepOff%);
+      endif;
+  endif;
+  Return (1);
+End
+
+Func ToolbarStepOff%()
+  SampleKey( "I" );
+  ToolbarSet(StepPos, "Step Start", ToolbarStepOn%);
+  Return( 1 );
+End
+
+Func ToolbarStepConfig%()
+  ' User dialog
+  StepConfigWindow();
+  DlgShow(stepPeriod, stepLength, stepAmpChair, stepAmpDrum, stepStim, pulseDuration, pulseInterval, stepLight, lightDur, lightStart);
+
+  ' Convert to exact numbers, accounting for software delays
+  sRest1 := (stepPeriod  - stepLength - stepLength)/2 - 3;
+  sLength := stepLength - 3;
+  sRest2 := sRest1 - 1;
+
+  ' Chair and drum velocity
+  sAmpChair := ChairVel2Int32%( stepAmpChair );   ' Amp chair
+  sAmpChairN := 0-sAmpChair;                      ' Amp chair (opposite direction)
+  sAmpDrum := DrumVel2Int32%( stepAmpDrum );      ' Amp drum
+  sAmpDrumN := 0-sAmpDrum;                        ' Amp drum (opposite direction)
+
+  ' Light pulse
+  if stepLight = 1 then
+
+      ' If light pulse is not exactly the same as step pulse, break into 3 segments
+      if lightDur <> stepLength or lightStart <> 0 then
+          stepLen1 := max(lightStart - 3, 0);                         ' Chair alone
+          stepLen2 := lightDur - 2;                                   ' Chair+light
+          stepLen3 := max(stepLength - lightDur - max(lightStart,2) - 2,0);  ' Chair alone
+
+          if stepLen3 = 0 then   'Small adjustment to account for delay if light aligned to end of step
+              stepLen2 := stepLen2-1;
+  endif;
+      endif;
+
+  endif;
+
+  if stepStim = 1 then
+  	pNumber := trunc((stepLength-4)/(pulseDuration + pulseInterval));
+  	pDuration := pulseDuration -2;
+  	pInterval := pulseInterval -3;
+  	sLength1 := stepLength - ((pulseDuration + pulseInterval)*pNumber)-4;
+  endif;
+
+  'testing
+  SetPulseSettings%();
+  Yield();
+  SetSequencerValues();
+  Return (1);
+End
+
+Proc StepConfigWindow()
+  DlgCreate("Step settings"); 'Start new dialog for entering step commands
+  DlgReal(1,"Total Period (ms)", 0, 15000);
+  DlgReal(2,"Step length (ms)", 0, 15000);
+  DlgReal(3,"Chair Velocity (deg/sec)", -100, 100);
+  DlgReal(4,"Drum Velocity (deg/sec)", -100, 100);
+  DlgCheck(5,"Stimulate");
+  DlgReal(6, "Pulse duration (ms)", 0, 5000);
+  DlgReal(7, "Interpulse interval (ms)", 0, 5000);
+  DlgCheck(8, "Light");
+  DlgReal(9, "Light duration (ms)", 0, 5000);
+  DlgReal(10, "Start time rel. step", 0, 5000);
+End
+
+'--------------------------------------------------------------------------------
+' STIM/PULSE FUNCTIONS
+'--------------------------------------------------------------------------------
+Func ToolbarStimOn%()
+  if fullPulse = 1 then
+      SampleKey( "Q" );
+  else
+      SampleKey("P");
+  endif;
+  sineOn% := 0;
+  Yield();
+  Toolbarset(PulsePos,"Pulse Off", ToolbarStimOff%);
+  Return( 1 );
+End
+
+Func ToolbarStimOff%()
+  SampleKey( "p" );
+  Yield();
+  SampleKey( "I" );
+  Yield();
+  sineOn% := 0;
+
+  Toolbarset(PulsePos,"Pulse On", ToolbarStimOn%);
+  Return( 1 );
+End
+
+'--------------------------------------------------------------------------------
+' OTHER FUNCTIONS
+'--------------------------------------------------------------------------------
+Proc ToolbarConfig()
+  ToolbarClear();     'Remove any old buttons
+
+  ToolbarSet(0, "Idle",ToolbarIdle%);
+  ToolbarSet(1, "Quit",  ToolbarQuit%);
+  ToolbarSet(InitPos, "Init", ToolbarInit%);
+  ToolbarSet(LightPos, "Light On", ToolbarLightOn%);
+  ToolbarSet(LaserPos, "Lasers On", ToolbarLasersOn%);
+  ToolbarSet(SinePos, "Sine On", ToolbarSineStart%);
+  ToolbarSet(SineConfigPos, "Sine Config", ToolbarSineConfig%);
+  ToolbarSet(PulseConfigPos, "Pulse Config", ToolbarPulseConfig%);
+  ToolbarSet(PulsePos, "Pulse On", ToolbarStimOn%);
+  ToolbarSet(VidPos, "Video On", ToolbarVidOn%);
+  ToolbarSet(StepPos, "Step On", ToolbarStepOn%);
+  ToolbarSet(StepConfigPos, "Step Config", ToolbarStepConfig%);
+  ToolbarSet(ExpmtPos, "Run Expmt", ToolbarRunExpmt%);
+  ToolbarSet(ExpmtConfigPos, "Expmt Config", ToolbarConfigExpmt%);
+  ToolbarSet(CommentPos, "Comment", ToolbarComment%);
+  ToolbarSet(NewFilePos, "New File", ToolbarNew%);
+  Toolbar("", 231);
+End
+
+Proc WindowConfig()
+
+  SampleClear(); 'Set the sampling configuration to a standard state
+
+  'sequencer setup - returns zero if OK
+  var err%; err% := SampleSequencer( SequencerFile$ );
+  if err%<0 then
+  	Message(Print$("I can't find your Sequencer File:%s",Error$(err%)));
+  	halt
+  endif
+
+  'Channel 1
+  SampleWaveform(HTVELChCom%,0,1000);  'Channel= 1, port= 0, ideal sampling rate= 1000 Hz
+  SampleCalibrate(HTVELChCom%,"deg/s", DrumVoltage2Velocity, DrumVoltage2VelocityC);
+  SampleTitle$(HTVELChCom%,"HTVEL");
+  SampleComment$(HTVELChCom%, "Velocity Signal sent to drum");
+
+  'Channel 2
+  SampleWaveform(HHVELChCom%,1,1000);
+  SampleCalibrate( HHVELChCom%, "deg/s", ChairVoltage2Velocity, ChairVoltage2VelocityC);
+  SampleTitle$(HHVELChCom%,"HHVEL");
+  SampleComment$(HHVELChCom%, "Velocity Signal sent to chair");
+
+  'Channel 3
+  SampleWaveform(htposCh%,2,1000);
+  SampleCalibrate(htposCh%, "deg", DrumPosReadoutScale, DrumPosReadoutOffset);
+  SampleTitle$(htposCh%,"htpos");
+  SampleComment$(htposCh%, "Drum position");
+
+  'Channel 4
+  SampleWaveform(hhposCh%,3,1000);
+  SampleCalibrate(hhposCh%,"deg", ChairPosReadoutScale, ChairPosReadoutOffset);
+  SampleTitle$(hhposCh%,"hhpos");
+  SampleComment$(hhposCh%, "Chair Position");
+
+  'Channel 5
+  SampleWaveform(heposCh1%,4,1000);
+  SampleCalibrate(heposCh1%,"V",EyeVoltage2Position,EyeVoltage2PositionC);
+  SampleTitle$(heposCh1%,"hepos1");
+  SampleComment$(heposCh1%, "Eye Position 1");
+
+  'Channel 6
+  SampleWaveform(heposCh2%,5,1000);
+  SampleCalibrate(heposCh2%,"V", EyeVoltage2Position,EyeVoltage2PositionC);
+  SampleTitle$(heposCh2%,"hepos2");
+  SampleComment$(heposCh2%, "Eye Position 2");
+
+  'Channel 7 UCOMMENT THIS FOR EPHYS
+  'SampleWaveform(7,6,1000);
+  'SampleCalibrate(7,"V",1,0);
+  'SampleTitle$(7,"phys");
+  'SampleComment$(7, "phys");
+
+  'Channel 8
+  SampleWaveform(hhvelCh%,7,1000);
+  SampleCalibrate(hhvelCh%,"deg/s",ChairVelReadoutScale,ChairVelReadoutOffset);
+  SampleTitle$(hhvelCh%,"hhvel");
+  SampleComment$(hhvelCh%, "Chair velocity");
+
+  'Channel 9
+  SampleEvent(9,0,2,1000);     'Func SampleEvent(chan%, port%, type%, rate);
+  SampleTitle$(9,"TTL1");
+  SampleComment$(9, "TTL1: Shutter");
+
+  'Channel 10
+  SampleEvent(10,1,2,1000);
+  SampleTitle$(10,"TTL2");
+  SampleComment$(10, "TTL2: IR LED");
+
+  'Channel 11
+  SampleEvent(11,2,2,1000);
+  SampleTitle$(11,"TTL3");
+  SampleComment$(11, "TTL3: L laser");
+
+  'Channel 12
+  SampleEvent(12,3,2,1000);
+  SampleTitle$(12,"TTL4");
+  SampleComment$(12, "TTL4: R laser");
+
+  'Channel 13
+  SampleWaveform(htvelCh%,8,1000);
+  SampleCalibrate(htvelCh%,"deg/s",DrumVelReadoutScale,DrumVelReadoutOffset);
+  SampleTitle$(htvelCh%,"htvel");
+  SampleComment$(htvelCh%, "Drum Velocity");
+
+  'Channel 30
+  SampleTextMark(200);
+
+  ' OPTIONAL D019 CHANNELS???
+  'Channel 3a : hevel: derivative of Channel 3
+  'htvelChan% := ChanDuplicate(3);
+  'ChanProcessClear(htvelChan%);
+  'ChanProcessAdd(htvelChan%, 3, 0.05);
+  'ChanShow(htvelChan%);
+  'ChanTitle$(htvelChan%,"htvel");
+
+  'Channel 4a : hevel: derivative of Channel 4
+  'hhvelChan% := ChanDuplicate(4);
+  'ChanProcessClear(hhvelChan%);
+  'ChanProcessAdd(hhvelChan%, 3, 0.05);
+  'ChanShow(hhvelChan%);
+  'ChanTitle$(hhvelChan%,"hhvel");
+
+  'Set optimise mode (do this last)
+  SampleOptimise(1,1,0,2,50);
+
+  'Continuous sampling
+  SampleMode(1);
+
+  'Create a spike2 data file and make the new window visible immediately
+  SampleWindow% := FileNew(0,1);
+
+  'Add smoothing to some channels
+  'ChanProcessAdd(13, 1, 0.05);
+
+  SetSequencerValues();
+
+  'Hide all
+  ChanHide(-1);
+
+  'Show certain channels in a particular order
+  ChanShow(1,2,3,4,5,6,7,8,9,10,11,12,13, 14,30,31);
+  'ChanSelect(13,1);    'Select channel 13
+  'ChanOrder(4,1,-3);   'Move selected channels
+  '-----------------------------------------
+
+  'Channel y-range (channel num, low, high)
+  YRange( 1, -10, 10 );
+  YRange( 2, -10, 10 );
+  YRange( 3, -10, 10 );
+  YRange( 4, -10, 10 );
+  YRange( 5, -10, 10 );
+  YRange( 6, -10, 10 );
+  YRange( 7, -10, 10 );
+  YRange( 8, -10, 10 );
+  'YRange( htvelChan%, -10, 10 ); ' OPTIONAL D019 CHANNELS???
+  'YRange( hhvelChan%, -10, 10 ); ' OPTIONAL D019 CHANNELS???
+
+  ChanWeight(1,.5);           ' Make command channel smaller
+  ChanWeight(2,.5);           ' Make command channel smaller
+
+  XRange( 0, 20);      ' Set the default X axis time range
+
+  ' Channel order
+  ChanOrder(0, -1, "31, 30, 12, 11, 10, 9, 3, 4, 6, 5, 13, 1");
+  ' Background Colour'
+  ViewColour(0,5);
+  ' Font
+  FontSet("Verdana", 8, 0);
+  ' Chan colors
+  chanColour(HTVELChCom%, 1, 28);
+  chanColour(htposCh%, 1, 28);
+  chanColour(htvelCh%, 1, 28);
+
+  chanColour(HHVELChCom%, 1, 30);
+  chanColour(hhposCh%, 1, 30);
+  chanColour(hhvelCh%, 1, 30);
+
+  chanColour(heposCh1%, 1, 1);
+  chanColour(heposCh2%, 1, 1);
+
+
+  ' Useful Zero line indicators
+  HCursorNew(1);
+  HCursor(1, 0, 1);
+
+  HCursorNew(2);
+  HCursor(2, 0, 2);
+
+  HCursorNew(3);
+  HCursor(3, 0, 3);
+
+  HCursorNew(4);
+  HCursor(4, 0, 4);
+
+  HCursorNew(5);
+  HCursor(5, 0, 8);
+
+  HCursorNew(6);
+  HCursor(6, 0, 12);
+End
+
+Func ToolbarNew%()
+  WindowConfig();
+  ' Make window full screen
+  WindowVisible(3);
+  Return (1);
+End
+
+Func ToolbarComment%()
+  DlgCreate("Comment"); 'Start new dialog for entering comments
+  DlgString(1,"Comment",200);
+  DlgShow(comment$);
+  SampleText(comment$);
+  Return(1);
+End
+
+Func ToolbarRunExpmt%()
+  runExpmt% := 1;
+  rep% := 0;                   'Rep (5min run, 40 sec test)
+  test% := 0;                  'test: 0=run testLength, 1=test testLength, 2=init&wait 20 sec, 3=init&wait 10 sec,  4=init&wait runLength
+  testrep% := 0;                ' Changed from 0 to 1 5/2/14 so that VORD is only tested once at the beginning
+  goalTime := MaxTime();
+
+  ToolbarSet(ExpmtPos, "Quit Expmt",ToolbarQuitExpmt%);
+  Return(1);
+End
+
+Func ToolbarQuitExpmt%()
+  runExpmt% := 0;
+  ToolbarInit%();
+  ToolbarSet(ExpmtPos, "Run Expmt",ToolbarRunExpmt%);
+  Return(1)
+End
+
+Func ToolbarInit%()
+  ToolbarLightOff%(); Yield(.01);
+  ToolbarSineStop%(); Yield(.01);
+  prevTime := 0;  ' Reset prev time so sine offset code continues running in a new file
+
+  SampleKey( "I" );
+
+  Return( 1 );
+End
+
+Func ToolbarQuit%()
+  SampleKey( "O" );
+  Return( 0 );
+End
+
+' Send values to the sequencer
+Proc SetSequencerValues()
+  actualChairPh := ((sinPhChair + pulsePhase + 180) mod 360) - 180;
+  actualDrumPh  := ((sinPhDrum  + pulsePhase + 180) mod 360) - 180;
+
+  'Chair parameters
+  SampleSeqVar( 23, ChairAmp2Int32%( ChairDegreesPerSecondOffset ) );
+  SampleSeqVar( 27, ChairAmp2Int16%( sinAmpChair ) );
+  SampleSeqVar( 28, Angle2Int32%( actualChairPh ) );
+  SampleSeqVar( 29, Hz2Int32%( sinHzChair ) );
+
+  'Drum parameters
+  SampleSeqVar( 22, DrumAmp2Int32%( DrumDegreesPerSecondOffset ) );
+  SampleSeqVar( 24, DrumAmp2Int16%( sinAmpDrum ) );
+  SampleSeqVar( 25, Angle2Int32%( actualDrumPh ) );
+  SampleSeqVar( 26, Hz2Int32%( sinHzDrum ) );
+
+  'Pulse parameters
+  SampleSeqVar( 33, pWait );
+  SampleSeqVar( 34, pNumber );
+  SampleSeqVar( 35, pDuration);
+  SampleSeqVar( 36, pInterval);
+  SampleSeqVar( 37, pStart);
+
+  'Step parameters
+  SampleSeqVar( 38, sRest2);
+  SampleSeqVar( 39, sStart);
+  SampleSeqVar( 40, sLength);
+  SampleSeqVar( 41, sLength1);
+  SampleSeqVar( 42, sRest1);
+  SampleSeqVar( 43, sAmpChair);
+  SampleSeqVar( 44, sAmpDrum);
+  SampleSeqVar( 45, sAmpChairN);
+  SampleSeqVar( 46, sAmpDrumN);
+  SampleSeqVar( 47, stepLen1); ' For delayed light pulse with step
+  SampleSeqVar( 48, stepLen2);
+  SampleSeqVar( 49, stepLen3);
+  SampleSeqVar( 50, pulseDurationV);
+  SampleSeqVar( 51, pulseWaitV);
+  SampleSeqVar( 52, pulsePeriod);
+End
+
+'--------------------------------------------------------------------------------
+' CONVERSION FUNCTIONS
+'--------------------------------------------------------------------------------
+
+' Angles in the range [-180,180] should span [-2147483648.0,2147483647.0]
+Func Angle2Int32%( angle )
+  Return( angle * 2147483647.0 / 180 );
+End
+
+' Rates are calculated in degrees per sequencer step, with one degree being 11930465.
+Func Hz2Int32%( hz )
+ 'This assumes a sequencer rate of 1 kHz.
+  Return( hz * 11930465 * 360 / 1000 );
+End
+
+' Amplitudes must be converted such that [ 0, 32768 ] spans the positive range of the dac, e.g. [0, 5 ]
+' We have to include the dac maximum and the degrees-per-second-to-voltage conversion factor. Does not include offset.
+Func ChairAmp2Int16%( amp )
+  Return( amp * ChairDegreesPerSecond2Voltage * 32768 / MaxVoltage  ) ;
+End
+
+Func DrumAmp2Int16%( amp )
+  Return( amp * DrumDegreesPerSecond2Voltage * 32768 / MaxVoltage  )  ;
+End
+
+Func ChairAmp2Int32%( amp )
+  Return( amp * ChairDegreesPerSecond2Voltage * 2147483647 / MaxVoltage  ) ;
+End
+
+Func DrumAmp2Int32%( amp )
+  Return( amp * DrumDegreesPerSecond2Voltage * 2147483647 / MaxVoltage  )  ;
+End
+
+' steps
+' Command velocities must be converted such that [ 0, 2147483647 ] spans the positive range of the dac, e.g. [0, 5 ]
+' We have to include the dac maximum and the degrees-per-second-to-voltage conversion factor.
+Func ChairVel2Int32%( amp )
+  Return(  (amp + ChairDegreesPerSecondOffset) * ChairDegreesPerSecond2Voltage* 2147483647 / MaxVoltage  );
+End
+
+Func DrumVel2Int32%( amp )
+  Return( (amp + DrumDegreesPerSecondOffset) * DrumDegreesPerSecond2Voltage * 2147483647 / MaxVoltage  );
+End

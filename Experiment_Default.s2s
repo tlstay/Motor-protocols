@@ -1,0 +1,256 @@
+'--------------------------------------------------------------------------------
+' Rig-Specific parameters file Location
+'--------------------------------------------------------------------------------
+'D019
+#include "C:\\Users\\amins\\Documents\\RL_Code\\Experiment Protocols\\Parameters_D019.s2s"
+
+'D253
+'#include "C:\\Users\\amins\\Documents\\RL_Code\\Experiment Protocols\\Parameters_D253.s2s"
+
+'--------------------------------------------------------------------------------
+' Universal Parameters File Location
+'--------------------------------------------------------------------------------
+#include "C:\\Users\\amins\\Documents\\RL_Code\\Experiment Protocols\\Parameters_Universal.s2s"
+
+
+'--------------------------------------------------------------------------------
+' MAIN PROGRAM
+'--------------------------------------------------------------------------------
+ToolbarConfig();
+
+
+'--------------------------------------------------------------------------------
+' Toolbar Callbacks
+'--------------------------------------------------------------------------------
+Func ToolbarIdle%()
+  'This function calls repeatedly whenever nothing else is happening
+  'if runExmpt=1, it is used to run a full expmt automatically.  -HP
+  'expmtMode: 0=habit, 1=0x, 2=2x, 3=ipsi stim, 4=contra stim
+  'test: 0=wait, 1=test, 2=train
+      ' Check a valid sampling view is running
+      var currView := ViewKind();
+      if  currView <> 0 then
+          return 1;
+      endif;
+
+
+  ' Keep sine wave from drifting!!!
+  if MaxTime() > (prevTime + 1/sinHzChair) then
+
+      ' If sine wave is on, do not return to the 0 point, stay where you are
+      ' This is a hack on a hack. Someone (probably me) should rewrite the
+      ' anti-drift code from scratch to take this into account. - Max Gagnon 7-30-18
+  if driftFix = 1 then
+        if sineOn% = 1 or vidOn = 1 then
+
+          if sinPhChair > 0 then
+            sinOnCorChair := sinAmpChair / (2 * 3.14159 * sinHzChair) ; ' * -1 for D253'
+          else
+            sinOnCorChair := sinAmpChair / (2 * 3.14159 * sinHzChair) * -1; ' * -1 for D019'
+          endif
+
+          if sinPhDrum < 0 then
+            sinOnCorDrum := sinAmpDrum / (2 * 3.14159 * sinHzDrum)  ; ' * -1 for D253'
+          else
+            sinOnCorDrum := sinAmpDrum / (2 * 3.14159 * sinHzDrum) * -1; ' * -1 for D019'
+          endif
+
+        else
+          sinOnCorChair := 0;
+          sinOnCorDrum := 0;
+        endif
+
+        ' original anti-drift code'
+        prevTime := MaxTime();
+        ' Measure slope from last 1 cycle of chair/drum position feedback
+        var hhposSlope := ChanValue(hhposCh%, prevTime) - ChanValue(hhposCh%, prevTime-(1/sinHzChair));
+        var htposSlope := ChanValue(htposCh%, prevTime) - ChanValue(htposCh%, prevTime-(1/sinHzDrum));
+        var hhposPos := ChanMeasure(hhposCh%, 2, prevTime-(1/sinHzChair), prevTime) + (sinOnCorChair);
+        var htposPos := ChanMeasure(htposCh%, 2, prevTime-(1/sinHzDrum), prevTime) - (sinOnCorDrum);
+
+        'DrumDegreesPerSecondOffset := DrumDegreesPerSecondOffset - htposSlope/4;
+        ' D253
+        'ChairDegreesPerSecondOffset :=  -(-hhposSlope/4  - hhposPos/4) + .06;
+        'DrumDegreesPerSecondOffset :=  -(-htposSlope/4 - htposPos/4) + .246;
+
+        'D019
+        ChairDegreesPerSecondOffset :=  -hhposSlope/4  - hhposPos/4;'' + .06;
+        DrumDegreesPerSecondOffset :=  -htposSlope/4 - htposPos/4;'' + .246;
+        SetSequencerValues();
+        'SampleKey( "A" );
+    endif;
+  endif;
+
+
+  'If an experiment is running:
+  if runExpmt% = 1 then
+
+      'Check the time. Seconds is the current time - compare it to the goal time of each segment
+      if  MaxTime() > goalTime then
+
+          if   rep% = (nBlocks%+2) then 'all done
+              ToolbarQuitExpmt%();    ' All done
+              Return(1);
+          endif;
+
+          docase
+
+          case test% = 0 then             ' Run Stim test and bilat test
+            SampleKey("0");
+            if zeroPause = 1 then
+              goalTime  := MaxTime() + testlength + 8;
+              runFlash();                    ' Flash light once to alert animal
+              ToolbarInit%();
+              zeroPause := 0;
+            else
+              goalTime  := MaxTime() + testlength + 2;
+              ToolbarSineStart%();
+              test% := 4;
+              zeroPause := 1;
+            endif
+
+          case test% = 4 then
+              SampleKey("4");
+              goalTime  := MaxTime() +  130*testStim + 5;
+              ToolbarSineStop%();
+              Yield(2);
+
+              if testStim > 0 then
+                  SinAmpChair := 0;                ' STIM
+                  sinAmpDrum := 0;
+                  SetSequencerValues();
+                  Yield(4);
+                  ToolbarStimOn%();
+                  Yield(40);
+                  ToolbarStimOff%();
+                  Yield(6);
+
+                  SinAmpChair := 10;               ' BILAT
+                  SetSequencerValues();
+                  ToolbarLasersOn%();
+                  Yield(.1);
+                  ToolbarSineStart%();
+                  Yield(40);
+                  ToolbarLasersOff%();
+                  Yield(.1) ;
+                  ToolbarSineStop%();
+                  Yield(.1) ;
+                  SinAmpDrum := 10;
+                  SetSequencerValues();
+              endif;
+
+              test% := 5;
+
+          case test% = 5 then
+              SampleKey("5");
+              goalTime  := MaxTime() +   testlength + 10;
+              ToolbarInit%();
+              Yield(1);
+              runFlash();                    ' Flash light once to alert animal
+              ToolbarInit%();
+              Yield(7);
+              ToolbarSineStart%();            ' VORD
+              test% := 1;
+
+          case test% = 1 then               'FINISHED TRAINING, WAIT NOW
+              SampleKey("1");
+              goalTime  := MaxTime() +  10;    'wait 10 seconds for init
+              ToolbarSineStop%(); Yield();
+              ToolbarLightOff%(); Yield();
+              Yield(1);
+              runFlash();                    ' Flash light once to alert animal
+              ToolbarInit%();
+              test% := 2;
+
+          case test% = 2 then               'FINISHED WAITING, TEST NOW
+              SampleKey("2");
+              goalTime := MaxTime() + testLength;
+              ToolbarSineStart%();          'start the sine wave
+              Yield(.1)   ;
+              testrep% := testrep%+1;
+              if testrep% = nTestreps% then
+                  test% := 3;
+                  rep% := rep% + 1;
+              else
+                  test% := 1;
+              endif;
+
+          case test% = 3 then                  'Finished test, run training
+              SampleKey("3");
+              goalTime := MaxTime() + runLength;
+              Yield();
+              if rep% < (nBlocks%+1) then
+                  docase
+                  case expmtMode > 2 then                 '3 = ipsi, 4 = contra
+                      ToolbarStimOn%();
+                  case expmtMode > 0 then                 '1 = x0, 2 = x2
+                      ToolbarLightOn%();
+                  endcase;
+              else
+                  ToolbarSineStop%();              '                ToolbarInit%();
+              endif;
+
+              if rep% = nBlocks% then
+                  test% := 0;
+              else
+                  test% := 1;
+              endif;
+              testrep% := 0;
+
+          endcase;
+      endif;
+  endif;
+
+
+  Return(1);
+End
+
+'--------------------------------------------------------------------------------
+'Configure expmt settings window
+'--------------------------------------------------------------------------------
+Func ToolbarConfigExpmt%()
+  DlgCreate("Experiment settings");  'Start new dialog
+  DlgInteger(1,"Number of run-test blocks",0,100,0,0,1);
+  DlgInteger(2,"Number of tests per block",1,100,0,0,1);    'set to 0 if not using Chair
+  DlgReal(3,"Run length (s)",0,5000);
+  DlgReal(4,"Test length (s)",0,5000);
+  DlgList(5,"Expmt mode", "habit|x0|x2|ipsi|contra|steps");
+  DlgInteger(6,"Light flash on?)",0,1,0,0,"0|1");
+  DlgReal(7,"Test stim and bilat (0 or 1)",0,1);
+
+  DlgShow(nBlocks%, nTestreps%, runLength, testLength, expmtMode, flashon%,testStim);
+
+  docase
+  case expmtMode = 0 then     'habit
+      sinPhDrum := 90;
+      sinPhChair := 90;
+      sinAmpChair := 10;
+      sinAmpDrum := 0;
+  case expmtMode = 1 then     'x0
+      sinPhDrum := 90;
+      sinPhChair := 90;
+      sinAmpChair := 10;
+      sinAmpDrum := 10;
+  case expmtMode = 2 then     'x2
+      sinPhDrum := -90;
+      sinPhChair := 90;
+      sinAmpChair := 10;
+      sinAmpDrum := 10;
+  case expmtMode = 3  then     'ipsi
+      sinPhChair := -90;'D019:-90, D253:90'
+      sinAmpDrum := 0;
+  case expmtMode = 4 then      'contra
+      sinPhChair := 90; 'D019:90, D253:-90'
+      sinAmpDrum := 0;
+  case expmtMode = 5 then      'steps
+      ToolbarStepConfig%();
+  endcase;
+
+
+  if testStim > 0 then
+      ToolbarPulseConfig%()
+  endif;
+
+  SetSequencerValues();
+  Return(1);
+End
